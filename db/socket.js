@@ -1,10 +1,8 @@
-require(`dotenv`).config();
-const { Server } = require("socket.io");
-const http = require("http");
+require("dotenv").config();
 const express = require("express");
-const { v4: uuidv4 } = require("uuid");
-const mongoose = require("mongoose");
-const User = require("../model/userModel"); // adjust path to your model
+const http = require("http");
+const { Server } = require("socket.io");
+const User = require("../model/userModel");
 const {
   getReceiverSocketId,
   createMatch,
@@ -17,102 +15,46 @@ const {
   addPlayerToQueue,
 } = require("./storeSocket");
 
-const allowedOrigins = process.env.CLIENT_URLS.split(",");
 const app = express();
 const server = http.createServer(app);
+
 const io = new Server(server, {
   cors: {
-    // origin: function (origin, callback) {
-    //   if (!origin || allowedOrigins.includes(origin)) {
-    //     console.log("due to origins");
-
-    //     callback(null, true);
-    //   } else {
-    //     console.log("not due to origins");
-
-    //     callback(new Error("Not allowed by CORS"));
-    //   }
-    // },
-    origin: process.env.CLIENT_URLS1,
+    origin: process.env.CLIENT_URLS.split(","),
     credentials: true,
   },
+  transports: ["websocket"], // ← no polling ⇒ no 400
 });
 
+/* ---------------- socket handlers ---------------- */
 io.on("connection", async (socket) => {
-  console.log("A user connected", userSocketMap);
-
   const userId = socket.handshake.query.userId;
+  console.log("⚡ socket connected:", socket.id, userId);
 
   if (userId) {
     userSocketMap[userId] = socket.id;
-
-    // Mark user as online in DB
-    try {
-      await User.findByIdAndUpdate(userId, { isOnline: true });
-      console.log(`✅ User ${userId} is now online`);
-    } catch (err) {
-      console.error(`❌ Failed to update online status for ${userId}:`, err);
-    }
+    await User.findByIdAndUpdate(userId, { isOnline: true }).catch(
+      console.error
+    );
   }
-
-  socket.on("cancelSearch", () => {
-    if (userId && matchQueue.has(userId)) {
-      clearTimeout(matchQueue.get(userId));
-      matchQueue.delete(userId);
-      console.log(`🚫 User ${userId} cancelled their search.`);
-    }
-  });
 
   io.emit("getOnlineUsers", Object.keys(userSocketMap));
 
+  socket.on("cancelSearch", () => cancelPlayerSearch(userId));
   socket.on("disconnect", async () => {
-    console.log("A user disconnected", socket.id);
-
+    console.log("🚪 socket disconnected:", socket.id);
     if (userId) {
-      // Mark user as offline in DB
-      try {
-        await User.findByIdAndUpdate(userId, { isOnline: false });
-        console.log(`🚪 User ${userId} is now offline`);
-      } catch (err) {
-        console.error(`❌ Failed to update offline status for ${userId}:`, err);
-      }
-    }
-
-    // If they were in match queue, remove them
-    if (userId && matchQueue.has(userId)) {
-      clearTimeout(matchQueue.get(userId));
+      await User.findByIdAndUpdate(userId, { isOnline: false }).catch(
+        console.error
+      );
+      removeMatch(userId, io);
       matchQueue.delete(userId);
-      console.log(
-        `👻 User ${userId} removed from match queue due to disconnect.`
-      );
+      delete userSocketMap[userId];
     }
-
-    // If they were in a match, remove match and notify opponent
-    const match = getMatchByPlayerId(userId);
-    if (match) {
-      currentMatches.delete(match.matchId);
-
-      const opponentId =
-        match.player1Id === userId ? match.player2Id : match.player1Id;
-      const opponentSocketId = getReceiverSocketId(opponentId);
-
-      if (opponentSocketId) {
-        io.to(opponentSocketId).emit("opponentLeft", {
-          matchId: match.matchId,
-          opponentId: userId,
-          message: "Your opponent has left the match.",
-        });
-      }
-
-      console.log(
-        `❌ Match ${match.matchId} ended because ${userId} disconnected.`
-      );
-    }
-
-    delete userSocketMap[userId];
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
   });
 });
+/* -------------------------------------------------- */
 
 module.exports = {
   io,
