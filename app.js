@@ -31,6 +31,8 @@ const morgan = require(`morgan`);
 const authRoutes = require(`./routes/authRoutes`);
 const friendRoute = require("./routes/friendsRoute");
 const play1v1Route = require("./routes/Play1v1Route");
+const temproute = require("./routes/tempRoute");
+
 app.use(express.json());
 // app.use(fileUpload({ useTempFiles: true }));
 app.use(cookieParser(process.env.JWT_SECRET));
@@ -39,6 +41,7 @@ app.use(morgan(`tiny`));
 app.use(`/api/v1/auth`, authRoutes);
 app.use(`/api/v1/friend`, friendRoute);
 app.use(`/api/v1/play`, play1v1Route);
+app.use(`/api/v1/temp`, temproute);
 
 const port = process.env.PORT || 3000;
 app.use(notFoundMiddleware);
