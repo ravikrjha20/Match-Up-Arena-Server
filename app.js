@@ -16,9 +16,26 @@ const fileUpload = require(`express-fileupload`);
 // });
 const allowedOrigins = process.env.CLIENT_URLS.split(",");
 
+// app.use(
+//   cors({
+//     origin: allowedOrigins,
+//     credentials: true,
+//   })
+// );
+
 app.use(
   cors({
-    origin: allowedOrigins,
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        console.log("due to origins");
+
+        callback(null, true);
+      } else {
+        console.log("not due to origins");
+
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   })
 );

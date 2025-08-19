@@ -22,7 +22,17 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigins,
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        console.log("due to origins");
+
+        callback(null, true);
+      } else {
+        console.log("not due to origins");
+
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   },
 });
