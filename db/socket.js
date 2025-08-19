@@ -33,7 +33,7 @@ const io = new Server(server, {
     //     callback(new Error("Not allowed by CORS"));
     //   }
     // },
-    origin: "*",
+    origin: process.env.CLIENT_URLS1,
     credentials: true,
   },
 });
