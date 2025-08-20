@@ -32,6 +32,7 @@ const io = new Server(server, {
     origin: process.env.CLIENT_URLS1,
     credentials: true,
   },
+  transports: ["websocket"],
 });
 io.on("connection", async (socket) => {
   console.log("A user connected", userSocketMap);
