@@ -36,7 +36,7 @@ const io = new Server(server, {
 });
 io.on("connection", async (socket) => {
   console.log("A user connected", userSocketMap);
-  const userId = socket.handshake.query.userId;
+  const userId = socket.handshake.auth.userId;
   if (userId) {
     userSocketMap[userId] = socket.id;
     // Mark user as online in DB
