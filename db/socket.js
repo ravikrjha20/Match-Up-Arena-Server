@@ -14,7 +14,6 @@ const {
   matchQueue,
   currentMatches,
   cancelPlayerSearch,
-  addPlayerToQueue,
 } = require("./storeSocket");
 const allowedOrigins = process.env.CLIENT_URLS.split(",");
 const app = express();
@@ -107,5 +106,4 @@ module.exports = {
   getMatchByPlayerId,
   removeMatch,
   cancelPlayerSearch,
-  addPlayerToQueue,
 };

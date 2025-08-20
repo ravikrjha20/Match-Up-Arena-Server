@@ -7,8 +7,23 @@ const {
   io,
   matchQueue,
   createMatch,
-  addPlayerToQueue,
 } = require("../db/socket");
+
+function addPlayerToQueue(userId) {
+  const timeoutId = setTimeout(() => {
+    if (matchQueue.has(userId)) {
+      matchQueue.delete(userId);
+      const socketId = getReceiverSocketId(userId);
+      if (socketId) {
+        io.to(socketId).emit("matchTimeout", {
+          message: "No opponent found in time.",
+        });
+      }
+      console.log(`⌛ Matchmaking timeout for user: ${userId}`);
+    }
+  }, MATCH_TIMEOUT_MS);
+  matchQueue.set(userId, timeoutId);
+}
 
 const storeMatchHistory = async (
   player1Id,

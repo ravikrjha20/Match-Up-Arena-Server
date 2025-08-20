@@ -60,21 +60,6 @@ function getMatchByPlayerId(playerId) {
 function removeMatch(matchId) {
   return currentMatches.delete(matchId);
 }
-function addPlayerToQueue(userId) {
-  const timeoutId = setTimeout(() => {
-    if (matchQueue.has(userId)) {
-      matchQueue.delete(userId);
-      const socketId = getReceiverSocketId(userId);
-      if (socketId) {
-        io.to(socketId).emit("matchTimeout", {
-          message: "No opponent found in time.",
-        });
-      }
-      console.log(`⌛ Matchmaking timeout for user: ${userId}`);
-    }
-  }, MATCH_TIMEOUT_MS);
-  matchQueue.set(userId, timeoutId);
-}
 module.exports = {
   getReceiverSocketId,
   createMatch,
@@ -84,7 +69,7 @@ module.exports = {
   matchQueue,
   currentMatches,
   cancelPlayerSearch,
-  addPlayerToQueue,
+
   addInvite,
   removeInvite,
   getInvite,
