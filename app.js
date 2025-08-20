@@ -5,9 +5,7 @@ const express = require(`express`);
 // const app = express();
 const connectDB = require(`./db/connect`);
 const { app, server } = require(`./db/socket`);
-
 const fileUpload = require(`express-fileupload`);
-
 // const cloudinary = require(`cloudinary`).v2;
 // cloudinary.config({
 //   cloud_name: process.env.CLOUD_NAME,
@@ -15,24 +13,20 @@ const fileUpload = require(`express-fileupload`);
 //   api_secret: process.env.CLOUD_API_SECRET,
 // });
 const allowedOrigins = process.env.CLIENT_URLS.split(",");
-
 // app.use(
 //   cors({
 //     origin: allowedOrigins,
 //     credentials: true,
 //   })
 // );
-
 app.use(
   cors({
     // origin: function (origin, callback) {
     //   if (!origin || allowedOrigins.includes(origin)) {
     //     console.log("due to origins");
-
     //     callback(null, true);
     //   } else {
     //     console.log("not due to origins");
-
     //     callback(new Error("Not allowed by CORS"));
     //   }
     // },
@@ -40,31 +34,25 @@ app.use(
     credentials: true,
   })
 );
-
 const errorHandlerMiddleware = require(`./middleware/error-handler`);
 const notFoundMiddleware = require(`./middleware/not-found`);
 const cookieParser = require(`cookie-parser`);
 const morgan = require(`morgan`);
-
 const authRoutes = require(`./routes/authRoutes`);
 const friendRoute = require("./routes/friendsRoute");
 const play1v1Route = require("./routes/Play1v1Route");
 const temproute = require("./routes/tempRoute");
-
 app.use(express.json());
 // app.use(fileUpload({ useTempFiles: true }));
 app.use(cookieParser(process.env.JWT_SECRET));
 app.use(morgan(`tiny`));
-
 app.use(`/api/v1/auth`, authRoutes);
 app.use(`/api/v1/friend`, friendRoute);
 app.use(`/api/v1/play`, play1v1Route);
 app.use(`/api/v1/temp`, temproute);
-
 const port = process.env.PORT || 3000;
 app.use(notFoundMiddleware);
 app.use(errorHandlerMiddleware);
-
 const start = async () => {
   try {
     await connectDB(process.env.MONGO_URI);
@@ -78,5 +66,4 @@ const start = async () => {
     console.log(error);
   }
 };
-
 start();
