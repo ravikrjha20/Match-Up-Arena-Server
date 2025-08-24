@@ -20,16 +20,15 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    // origin: function (origin, callback) {
-    //   if (!origin || allowedOrigins.includes(origin)) {
-    //     console.log("due to origins");
-    //     callback(null, true);
-    //   } else {
-    //     console.log("not due to origins");
-    //     callback(new Error("Not allowed by CORS"));
-    //   }
-    // },
-    origin: process.env.CLIENT_URLS1,
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        console.log("due to origins");
+        callback(null, true);
+      } else {
+        console.log("not due to origins");
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   },
   transports: ["websocket"],
