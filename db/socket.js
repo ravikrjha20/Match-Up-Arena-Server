@@ -15,20 +15,12 @@ const {
   currentMatches,
   cancelPlayerSearch,
 } = require("./storeSocket");
-const allowedOrigins = process.env.CLIENT_URLS.split(",");
+const allowedOrigins = process.env.CLIENT_URLS1;
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        console.log("due to origins");
-        callback(null, true);
-      } else {
-        console.log("not due to origins");
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
+    origin: CLIENT_URLS1,
     credentials: true,
   },
   transports: ["websocket"],
