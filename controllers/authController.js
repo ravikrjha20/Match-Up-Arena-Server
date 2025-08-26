@@ -73,11 +73,13 @@ const login = async (req, res) => {
   res.status(StatusCodes.OK).json({ user: safeUser });
 };
 const logout = (req, res) => {
+  const isProduction = process.env.NODE_ENV === "production";
   const options = {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     signed: true,
     path: "/",
+    sameSite: isProduction ? "none" : "lax",
   };
   res.clearCookie("accessToken", options);
   res.clearCookie("refreshToken", options);
