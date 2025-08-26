@@ -4,9 +4,13 @@ const bcrypt = require("bcryptjs");
 const matchHistorySchema = new mongoose.Schema(
   {
     opponent: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    opponentName: { type: String },
+    opponentAvatar: { type: Number, default: 0 },
     result: { type: String, enum: ["win", "loss", "draw"], required: true },
     date: { type: Date, default: Date.now },
     mode: { type: String, enum: ["1v1", "bot"], default: "1v1" },
+    newRating: { type: Number, default: 1000.0 },
+    ratingChange: { type: Number, default: 0.0 },
   },
   { _id: false }
 );
@@ -19,7 +23,7 @@ const userSchema = new mongoose.Schema(
     password: { type: String, required: true, minlength: 8 },
 
     // Gameplay stats
-    rating: { type: Number, default: 0 },
+    rating: { type: Number, default: 1000.0 },
     coins: { type: Number, default: 500 },
     wins: { type: Number, default: 0 },
     losses: { type: Number, default: 0 },
@@ -32,7 +36,7 @@ const userSchema = new mongoose.Schema(
     isOnline: { type: Boolean, default: false },
 
     // Optional avatar
-    image: { type: String, default: "" },
+    avatar: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

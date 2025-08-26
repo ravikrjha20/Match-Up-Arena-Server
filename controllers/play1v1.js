@@ -24,22 +24,62 @@ function addPlayerToQueue(userId) {
   }, MATCH_TIMEOUT_MS);
   matchQueue.set(userId, timeoutId);
 }
+function calculateNewRating(ratingUser, ratingOpponent, win, K = 30) {
+  const expectedScore =
+    1 / (1 + Math.pow(10, (ratingOpponent - ratingUser) / 400));
+  const actualScore = win ? 1 : 0;
+  const newRating = ratingUser + K * (actualScore - expectedScore);
+  const ratingChange = newRating - ratingUser;
+  return {
+    newRating: Math.round(newRating),
+    ratingChange: Number(ratingChange.toFixed(2)),
+  };
+}
 
 const storeMatchHistory = async (
   player1Id,
   player2Id,
-  player1Result, // "win" | "loss" | "draw"
-  player2Result, // "win" | "loss" | "draw"
-  isFriendMatch // true if they are friends
+  player1Result,
+  player2Result,
+  isFriendMatch
 ) => {
   try {
-    // 1. Save the match in MatchHistory collection
-    await matchHistory.create({
-      player1: { id: player1Id, result: player1Result },
-      player2: { id: player2Id, result: player2Result },
-    });
+    // 1. Fetch both users
+    const [player1, player2] = await Promise.all([
+      User.findById(player1Id),
+      User.findById(player2Id),
+    ]);
 
-    // 2. Update each player's stats in User collection
+    if (!player1 || !player2) throw new Error("One or both users not found");
+
+    // 2. Calculate new ratings
+    const player1Win = player1Result === "win";
+    const player2Win = player2Result === "win";
+
+    const { newRating: newRating1, ratingChange: ratingChange1 } =
+      calculateNewRating(player1.rating, player2.rating, player1Win);
+    const { newRating: newRating2, ratingChange: ratingChange2 } =
+      calculateNewRating(player2.rating, player1.rating, player2Win);
+
+    // 3. Save match in MatchHistory collection
+    await matchHistory.create({
+      player1: {
+        id: player1._id,
+        name: player1.username,
+        avatar: player1.avatar,
+        result: player1Result,
+        ratingChange: isFriendMatch ? 0 : ratingChange1,
+        newRating: isFriendMatch ? player1.rating : newRating1,
+      },
+      player2: {
+        id: player2._id,
+        name: player2.username,
+        avatar: player2.avatar,
+        result: player2Result,
+        ratingChange: isFriendMatch ? 0 : ratingChange2,
+        newRating: isFriendMatch ? player1.rating : newRating2,
+      },
+    });
     await Promise.all([
       User.findByIdAndUpdate(player1Id, {
         $inc: {
@@ -47,6 +87,18 @@ const storeMatchHistory = async (
           losses: player1Result === "loss" ? 1 : 0,
           draws: player1Result === "draw" ? 1 : 0,
         },
+        $push: {
+          matches: {
+            opponent: player2._id,
+            opponentName: player2.username,
+            opponentAvatar: player2.avatar,
+            result: player1Result,
+            mode: "1v1",
+            ratingChange: ratingChange1,
+            newRating: isFriendMatch ? player1.rating : newRating1,
+          },
+        },
+        $set: { rating: newRating1 },
       }),
       User.findByIdAndUpdate(player2Id, {
         $inc: {
@@ -54,10 +106,22 @@ const storeMatchHistory = async (
           losses: player2Result === "loss" ? 1 : 0,
           draws: player2Result === "draw" ? 1 : 0,
         },
+        $push: {
+          matches: {
+            opponent: player1._id,
+            opponentName: player1.username,
+            opponentAvatar: player1.avatar,
+            result: player2Result,
+            mode: "1v1",
+            ratingChange: ratingChange2,
+            newRating: isFriendMatch ? player2.rating : newRating2,
+          },
+        },
+        $set: { rating: newRating2 },
       }),
     ]);
 
-    // 3. If they are friends, update head-to-head stats
+    // 5. Update head-to-head stats if friends
     if (isFriendMatch) {
       await Promise.all([
         userFriend.updateOne(
@@ -83,7 +147,9 @@ const storeMatchHistory = async (
       ]);
     }
 
-    console.log(`✅ Match history saved for ${player1Id} and ${player2Id}`);
+    console.log(
+      `✅ Match history saved: ${player1.username} vs ${player2.username}`
+    );
   } catch (error) {
     console.error("❌ Error storing match history:", error);
     throw error;
@@ -127,7 +193,7 @@ const playWithRandomOnlineUser = async (req, res) => {
       }
 
       const opponentData = await User.findById(opponentUserId).select(
-        "username name"
+        "username name avatar"
       );
       if (!opponentData) {
         console.warn("⚠ Opponent data missing — retrying match");
@@ -145,6 +211,7 @@ const playWithRandomOnlineUser = async (req, res) => {
         matchId: matchData.matchId, // ✅ send matchId
         opponentId: opponentUserId,
         opponentName,
+        opponentAvatar: opponentData.avatar,
         mark: "X",
         opponentMark: "O",
         turn: true, // X starts first
@@ -155,6 +222,7 @@ const playWithRandomOnlineUser = async (req, res) => {
         matchId: matchData.matchId, // ✅ send matchId
         opponentId: currentUserId,
         opponentName: currentUserName,
+        opponentAvatar: req.user.avatar,
         mark: "O",
         opponentMark: "X",
         turn: false,
@@ -186,7 +254,7 @@ const playOneVOne = async (req, res) => {
   try {
     const userId = req.user.userId;
     const opponentId = req.params.opponentId;
-    const { mask, opponentMask, isFriend } = req.body;
+    const { mask, opponentMask, isFriend, opponentName } = req.body;
 
     const userSocketId = getReceiverSocketId(userId);
     const opponentSocketId = getReceiverSocketId(opponentId);

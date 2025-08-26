@@ -212,7 +212,7 @@ const searchUsers = async (req, res, next) => {
         { name: { $regex: q, $options: "i" } },
       ],
     })
-      .select("_id name username image")
+      .select("_id name username avatar")
       .limit(20)
       .lean();
 
@@ -256,7 +256,7 @@ const getFriends = async (req, res, next) => {
     const { userId } = req.user;
     const userNet = await UserFriend.findOne({ userId }).populate(
       "friends.friendId",
-      "name username image isOnline"
+      "name username avatar isOnline"
     );
     if (!userNet) return res.json([]);
     res.status(StatusCodes.OK).json(userNet.friends);
@@ -299,7 +299,7 @@ const getAllFriends = async (req, res, next) => {
     const { userId } = req.user;
     const userNet = await UserFriend.findOne({ userId }).populate(
       "friends.friendId",
-      "name username image isOnline"
+      "name username avatar isOnline"
     );
     const friends = userNet ? userNet.friends.map((f) => f.friendId) : [];
     res.status(StatusCodes.OK).json({ friends });

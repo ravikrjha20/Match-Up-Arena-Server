@@ -4,7 +4,7 @@ const { StatusCodes } = require("http-status-codes");
 const { createTokenUser, attachCookiesToResponse } = require("../utils");
 
 const register = async (req, res) => {
-  const { name, username, email, password } = req.body;
+  const { name, username, email, password, avatar } = req.body;
 
   if (!name || !username || !email || !password) {
     throw new CustomError.BadRequestError(
@@ -26,7 +26,13 @@ const register = async (req, res) => {
     throw new CustomError.BadRequestError("Username cannot contain spaces");
   }
 
-  const user = await User.create({ name, username, email, password });
+  const user = await User.create({
+    name,
+    username,
+    email,
+    password,
+    avatar,
+  });
 
   const tokenUser = createTokenUser(user);
   attachCookiesToResponse({ res, user: tokenUser });
@@ -78,6 +84,46 @@ const logout = (req, res) => {
   res.status(StatusCodes.OK).json({ msg: "User logged out!" });
 };
 
+const updateProfile = async (req, res) => {
+  try {
+    const { name, username, email, previousPassword, password, avatar } =
+      req.body;
+    const userId = req.user.userId;
+
+    // Find user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+    if ((email && email !== user.email) || password) {
+      if (!previousPassword) {
+        return res.status(400).json({
+          msg: "Previous password is required to update email or password",
+        });
+      }
+      const isMatch = await user.comparePassword(previousPassword);
+      if (!isMatch) {
+        return res.status(400).json({ msg: "Previous password is incorrect" });
+      }
+    }
+    // Update non-password fields if provided
+    if (name) user.name = name;
+    if (username) user.username = username;
+    if (email) user.email = email;
+    if (avatar) user.avatar = avatar;
+    if (password) user.password = password;
+
+    await user.save();
+    const { password: _, ...updatedUser } = user.toObject();
+    res
+      .status(200)
+      .json({ msg: "Profile updated successfully", user: updatedUser });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: "Server error" });
+  }
+};
+
 const checkAuth = async (req, res) => {
   const user = await User.findOne({ email: req.user.email });
 
@@ -92,4 +138,5 @@ module.exports = {
   login,
   logout,
   checkAuth,
+  updateProfile,
 };
