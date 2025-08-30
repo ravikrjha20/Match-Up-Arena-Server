@@ -238,6 +238,8 @@ const searchUsers = async (req, res, next) => {
     const cachedUsers = await getCache(cacheKey);
 
     if (cachedUsers) {
+      console.log("found in redis");
+
       return res.status(200).json({ suggestions: cachedUsers });
     }
 
@@ -270,6 +272,7 @@ const getUserProfile = async (req, res, next) => {
       if (!profile) throw new CustomError.NotFoundError("User not found");
       await setCache(cacheKey, profile);
     }
+    // console.log("found in redis");
 
     const { password, ...safeProfile } = profile;
     res.status(StatusCodes.OK).json({ profile: safeProfile });
