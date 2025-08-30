@@ -20,7 +20,7 @@ const {
 } = require("../controllers/friendController");
 
 // ✅ Get a list of all friends of the logged-in user (full user details)
-router.get("/getallfriend", authenticateUser, getAllFriends);
+router.get("/getallfriend/:friendUsername", getAllFriends);
 
 // ✅ Send a friend request to a user by their ID
 router.post("/request/:friendId", authenticateUser, sendRequest);
@@ -47,7 +47,7 @@ router.get("/incoming", authenticateUser, getIncomingRequests);
 // ✅ Get all outgoing friend requests made by the logged-in user
 router.get("/outgoing", authenticateUser, getOutgoingRequests);
 
-router.get("/list", authenticateUser);
+// router.get("/list", authenticateUser);
 
 router.get("/profile/:username", getUserProfile);
 module.exports = router;

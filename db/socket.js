@@ -5,6 +5,7 @@ const express = require("express");
 const { v4: uuidv4 } = require("uuid");
 const mongoose = require("mongoose");
 const User = require("../model/userModel"); // adjust path to your model
+const { setCache, delCache } = require("../utils/redisHelper");
 const {
   getReceiverSocketId,
   createMatch,
@@ -32,7 +33,8 @@ io.on("connection", async (socket) => {
     userSocketMap[userId] = socket.id;
     // Mark user as online in DB
     try {
-      await User.findByIdAndUpdate(userId, { isOnline: true });
+      const user = await User.findByIdAndUpdate(userId, { isOnline: true });
+      setCache(`user:${userId}`, user);
       console.log(`✅ User ${userId} is now online`);
     } catch (err) {
       console.error(`❌ Failed to update online status for ${userId}:`, err);
@@ -51,7 +53,8 @@ io.on("connection", async (socket) => {
     if (userId) {
       // Mark user as offline in DB
       try {
-        await User.findByIdAndUpdate(userId, { isOnline: false });
+        const user = await User.findByIdAndUpdate(userId, { isOnline: false });
+        delCache(`user:${userId}`);
         console.log(`🚪 User ${userId} is now offline`);
       } catch (err) {
         console.error(`❌ Failed to update offline status for ${userId}:`, err);

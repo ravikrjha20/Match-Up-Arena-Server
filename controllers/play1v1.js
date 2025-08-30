@@ -9,6 +9,7 @@ const {
   createMatch,
 } = require("../db/socket");
 
+const { delCache, redisKey } = require("../utils/redisHelper");
 function addPlayerToQueue(userId) {
   const timeoutId = setTimeout(() => {
     if (matchQueue.has(userId)) {
@@ -24,7 +25,19 @@ function addPlayerToQueue(userId) {
   }, MATCH_TIMEOUT_MS);
   matchQueue.set(userId, timeoutId);
 }
-function calculateNewRating(ratingUser, ratingOpponent, win, K = 30) {
+function calculateNewRating(
+  ratingUser,
+  ratingOpponent,
+  win,
+  isFriendMatch,
+  K = 30
+) {
+  if (isFriendMatch) {
+    return {
+      newRating: ratingUser,
+      ratingChange: 0,
+    };
+  }
   const expectedScore =
     1 / (1 + Math.pow(10, (ratingOpponent - ratingUser) / 400));
   const actualScore = win ? 1 : 0;
@@ -57,9 +70,19 @@ const storeMatchHistory = async (
     const player2Win = player2Result === "win";
 
     const { newRating: newRating1, ratingChange: ratingChange1 } =
-      calculateNewRating(player1.rating, player2.rating, player1Win);
+      calculateNewRating(
+        player1.rating,
+        player2.rating,
+        player1Win,
+        isFriendMatch
+      );
     const { newRating: newRating2, ratingChange: ratingChange2 } =
-      calculateNewRating(player2.rating, player1.rating, player2Win);
+      calculateNewRating(
+        player2.rating,
+        player1.rating,
+        player2Win,
+        isFriendMatch
+      );
 
     // 3. Save match in MatchHistory collection
     await matchHistory.create({
@@ -68,16 +91,16 @@ const storeMatchHistory = async (
         name: player1.username,
         avatar: player1.avatar,
         result: player1Result,
-        ratingChange: isFriendMatch ? 0 : ratingChange1,
-        newRating: isFriendMatch ? player1.rating : newRating1,
+        ratingChange: ratingChange1,
+        newRating: newRating1,
       },
       player2: {
         id: player2._id,
         name: player2.username,
         avatar: player2.avatar,
         result: player2Result,
-        ratingChange: isFriendMatch ? 0 : ratingChange2,
-        newRating: isFriendMatch ? player1.rating : newRating2,
+        ratingChange: ratingChange2,
+        newRating: newRating2,
       },
     });
     await Promise.all([
@@ -120,7 +143,7 @@ const storeMatchHistory = async (
         $set: { rating: newRating2 },
       }),
     ]);
-
+    await delCache([redisKey("user", player1Id), redisKey("user", player2Id)]);
     // 5. Update head-to-head stats if friends
     if (isFriendMatch) {
       await Promise.all([

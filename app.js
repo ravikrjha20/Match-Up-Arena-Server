@@ -2,6 +2,7 @@ require(`dotenv`).config();
 require(`express-async-errors`);
 const cors = require(`cors`);
 const express = require(`express`);
+const { connectRedis } = require("./utils/redisClient");
 // const app = express();
 const connectDB = require(`./db/connect`);
 const { app, server } = require(`./db/socket`);
@@ -42,6 +43,7 @@ const authRoutes = require(`./routes/authRoutes`);
 const friendRoute = require("./routes/friendsRoute");
 const play1v1Route = require("./routes/Play1v1Route");
 const temproute = require("./routes/tempRoute");
+const competitiveRoute = require("./routes/competitiveRoute");
 app.use(express.json());
 // app.use(fileUpload({ useTempFiles: true }));
 app.use(cookieParser(process.env.JWT_SECRET));
@@ -50,12 +52,14 @@ app.use(`/api/v1/auth`, authRoutes);
 app.use(`/api/v1/friend`, friendRoute);
 app.use(`/api/v1/play`, play1v1Route);
 app.use(`/api/v1/temp`, temproute);
+app.use(`/api/v1/competitive`, competitiveRoute);
 const port = process.env.PORT || 3000;
 app.use(notFoundMiddleware);
 app.use(errorHandlerMiddleware);
 const start = async () => {
   try {
     await connectDB(process.env.MONGO_URI);
+    await connectRedis();
     console.log("🚀 Connection established ✅");
     server.listen(
       port,
