@@ -37,7 +37,7 @@ const getLeaderboard = async (req, res) => {
 
     // 1. Try Redis
     let leaderboard = [];
-    const cached = await redisClient.get("leaderboard");
+    const cached = await redisClient.del("leaderboard");
 
     if (cached) {
       leaderboard = JSON.parse(cached);
