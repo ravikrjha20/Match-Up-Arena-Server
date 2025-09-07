@@ -10,15 +10,21 @@ const refreshLeaderboardCache = async () => {
       .sort({ rating: -1 })
       .lean();
 
-    // Cache the whole list as a JSON string
-    await redisClient.set("leaderboard", JSON.stringify(leaderboard));
+    // Cache the whole list as a JSON string (expire in 12 hours = 43200 seconds)
+    await redisClient.set("leaderboard", JSON.stringify(leaderboard), {
+      EX: 60 * 60 * 12, // 12 hours
+    });
 
-    // Cache each user’s rank (index + 1)
+    // Cache each user’s rank (with 12-hour expiry as well)
     await Promise.all(
-      leaderboard.map((u, i) => redisClient.set(`userRank:${u._id}`, i + 1))
+      leaderboard.map((u, i) =>
+        redisClient.set(`userRank:${u._id}`, i + 1, {
+          EX: 60 * 60 * 12,
+        })
+      )
     );
 
-    console.log("✅ Leaderboard & ranks refreshed in Redis");
+    console.log("✅ Leaderboard & ranks refreshed in Redis (12h expiry)");
   } catch (err) {
     console.error("Error refreshing leaderboard cache:", err);
   }
